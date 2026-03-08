@@ -19,4 +19,3 @@ lin2lin = _not_implemented
 mul = _not_implemented
 add = _not_implemented
 max = _not_implemented
-\n*** End Patch```} />
