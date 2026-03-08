@@ -339,7 +339,7 @@ class InfoRequestModal(discord.ui.Modal, title="Запрос логов"):
 
 		embed.add_field(name="👤 Запросил", value=self.requester_nick.value, inline=False)
 		embed.add_field(name="🎯 Игрок", value=self.target_nick.value, inline=False)
-		embed.add_field(name="ℹ Тип логов", value=self.info_type.value, inline=False)
+		embed.add_field(name="ℹ Необходимая информация", value=self.info_type.value, inline=False)
 
 		view = InfoResponseButton(interaction.user.id, self.target_nick.value, self.bot)
 
@@ -379,7 +379,7 @@ class InfoResponseButton(discord.ui.View):
 		# Блокируем повторную обработку, не изменяя исходное сообщение
 		if interaction.message.id in processed_log_messages:
 			await interaction.response.send_message(
-				"ℹ Эта заявка уже [ОБРАБОТАНО].",
+				"ℹ Эта заявка уже обработана.",
 				ephemeral=True
 			)
 			return False
