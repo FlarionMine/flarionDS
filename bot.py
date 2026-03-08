@@ -54,6 +54,8 @@ def save_log_tokens(data: dict) -> None:
 
 log_auth_tokens = load_log_tokens()
 
+processed_log_messages = set()
+
 
 def has_logs_access(member: discord.Member) -> bool:
     """Проверка, есть ли у пользователя дискорд‑роль доступа к логам."""
@@ -374,6 +376,14 @@ class InfoResponseButton(discord.ui.View):
 
 	async def interaction_check(self, interaction: discord.Interaction):
 
+		# Блокируем повторную обработку, не изменяя исходное сообщение
+		if interaction.message.id in processed_log_messages:
+			await interaction.response.send_message(
+				"ℹ Эта заявка уже [ОБРАБОТАНО].",
+				ephemeral=True
+			)
+			return False
+
 		user_roles = [role.id for role in interaction.user.roles]
 
 		if any(role_id in LOG_SENDER_ROLES for role_id in user_roles):
@@ -393,7 +403,7 @@ class InfoResponseButton(discord.ui.View):
 	)
 	async def send_info(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-		original_message = interaction.message
+		original_message = interaction.message  # только для ID; не изменяем сообщение
 
 		class InfoInputModal(discord.ui.Modal, title=f"Логи по {self.target_nick}"):
 
@@ -436,13 +446,16 @@ class InfoResponseButton(discord.ui.View):
 					embed.add_field(name="💬 Логи", value=f"{modal_self.info_text.value}", inline=False)
 					embed.add_field(name="✉ Статус ЛС", value=dm_status, inline=False)
 
-					self.disable_buttons()
-					await original_message.edit(embed=embed, view=self)
+					# Помечаем обработанным, не трогая исходное сообщение
+					processed_log_messages.add(original_message.id)
 
-					# Дублируем лог в служебный канал, если он есть
+					# Отправляем отдельное сообщение с отметкой ОБРАБОТАНО
+					embed.title = "[ОБРАБОТАНО] Логи отправлены"
 					log_channel = self.bot.get_channel(INFO_LOG_CHANNEL_ID)
 					if log_channel:
 						await log_channel.send(embed=embed)
+					else:
+						await interaction.channel.send(embed=embed)
 
 					await interaction_modal.followup.send(
 						"✅ Информация отправлена, кнопка закрыта.",
