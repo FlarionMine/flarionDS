@@ -368,6 +368,10 @@ class InfoResponseButton(discord.ui.View):
 		self.target_nick = target_nick
 		self.bot = bot
 
+	def disable_buttons(self):
+		for item in self.children:
+			item.disabled = True
+
 	async def interaction_check(self, interaction: discord.Interaction):
 
 		user_roles = [role.id for role in interaction.user.roles]
