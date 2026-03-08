@@ -403,6 +403,10 @@ class InfoResponseButton(discord.ui.View):
 
 				dm_status = "✅ ЛС доставлены."
 				try:
+					# Аcknowledgement to avoid "interaction failed" even при долгих операциях
+					if not interaction_modal.response.is_done():
+						await interaction_modal.response.defer(ephemeral=True, thinking=True)
+
 					requester_user = await self.bot.fetch_user(self.requester_id)
 					sender_user = interaction_modal.user
 
@@ -436,17 +440,18 @@ class InfoResponseButton(discord.ui.View):
 					if log_channel:
 						await log_channel.send(embed=embed)
 
-					await interaction_modal.response.send_message(
+					await interaction_modal.followup.send(
 						"✅ Информация отправлена, кнопка закрыта.",
 						ephemeral=True
 					)
 
-				except Exception:
-					# При любой другой ошибке сообщаем исполнителю
-					await interaction_modal.response.send_message(
-						"⚠ Произошла ошибка при отправке логов.",
-						ephemeral=True
-					)
+				except Exception as e:
+					# Логируем в консоль и отправляем текст ошибки исполнителю
+					print(f"[log-send-error] {e}")
+					msg = f"⚠ Произошла ошибка при отправке логов: {e}"
+					if not interaction_modal.response.is_done():
+						await interaction_modal.response.defer(ephemeral=True, thinking=False)
+					await interaction_modal.followup.send(msg, ephemeral=True)
 
 		await interaction.response.send_modal(InfoInputModal())
 
