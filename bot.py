@@ -401,14 +401,20 @@ class InfoResponseButton(discord.ui.View):
 
 			async def on_submit(modal_self, interaction_modal: discord.Interaction):
 
+				dm_status = "✅ ЛС доставлены."
 				try:
 					requester_user = await self.bot.fetch_user(self.requester_id)
 					sender_user = interaction_modal.user
 
-					# Отправляем логи в ЛС запросившему
-					await requester_user.send(
-						f"📢 Логи по {self.target_nick}:\n{modal_self.info_text.value}"
-					)
+					# Пытаемся отправить логи в ЛС запросившему
+					try:
+						await requester_user.send(
+							f"📢 Логи по {self.target_nick}:\n{modal_self.info_text.value}"
+						)
+					except discord.Forbidden:
+						dm_status = "⚠ Не удалось отправить ЛС (запрещены личные сообщения)."
+					except discord.HTTPException as e:
+						dm_status = f"⚠ Не удалось отправить ЛС (HTTP {e.status})."
 
 					# Формируем итоговый embed и закрываем кнопку
 					embed = discord.Embed(
@@ -420,6 +426,7 @@ class InfoResponseButton(discord.ui.View):
 					embed.add_field(name="📢 Кому отправлена", value=f"{requester_user} (ID: {requester_user.id})", inline=False)
 					embed.add_field(name="🎯 Игрок", value=f"{self.target_nick}", inline=False)
 					embed.add_field(name="💬 Логи", value=f"{modal_self.info_text.value}", inline=False)
+					embed.add_field(name="✉ Статус ЛС", value=dm_status, inline=False)
 
 					self.disable_buttons()
 					await original_message.edit(embed=embed, view=self)
@@ -434,12 +441,8 @@ class InfoResponseButton(discord.ui.View):
 						ephemeral=True
 					)
 
-				except discord.Forbidden:
-					await interaction_modal.response.send_message(
-						"⚠ Не удалось отправить ЛС пользователю.",
-						ephemeral=True
-					)
 				except Exception:
+					# При любой другой ошибке сообщаем исполнителю
 					await interaction_modal.response.send_message(
 						"⚠ Произошла ошибка при отправке логов.",
 						ephemeral=True
