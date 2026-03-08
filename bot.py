@@ -389,6 +389,8 @@ class InfoResponseButton(discord.ui.View):
 	)
 	async def send_info(self, interaction: discord.Interaction, button: discord.ui.Button):
 
+		original_message = interaction.message
+
 		class InfoInputModal(discord.ui.Modal, title=f"Логи по {self.target_nick}"):
 
 			info_text = discord.ui.TextInput(
@@ -400,20 +402,46 @@ class InfoResponseButton(discord.ui.View):
 			async def on_submit(modal_self, interaction_modal: discord.Interaction):
 
 				try:
-					user = await self.bot.fetch_user(self.requester_id)
+					requester_user = await self.bot.fetch_user(self.requester_id)
+					sender_user = interaction_modal.user
 
-					await user.send(
+					# Отправляем логи в ЛС запросившему
+					await requester_user.send(
 						f"📢 Логи по {self.target_nick}:\n{modal_self.info_text.value}"
 					)
 
+					# Формируем итоговый embed и закрываем кнопку
+					embed = discord.Embed(
+						title="ℹ Логи отправлены",
+						color=discord.Color.green()
+					)
+					embed.add_field(name="👤 Кто запросил", value=f"{requester_user} (ID: {requester_user.id})", inline=False)
+					embed.add_field(name="🧑‍💼 Кто отправил", value=f"{sender_user} (ID: {sender_user.id})", inline=False)
+					embed.add_field(name="📢 Кому отправлена", value=f"{requester_user} (ID: {requester_user.id})", inline=False)
+					embed.add_field(name="🎯 Игрок", value=f"{self.target_nick}", inline=False)
+					embed.add_field(name="💬 Логи", value=f"{modal_self.info_text.value}", inline=False)
+
+					self.disable_buttons()
+					await original_message.edit(embed=embed, view=self)
+
+					# Дублируем лог в служебный канал, если он есть
+					log_channel = self.bot.get_channel(INFO_LOG_CHANNEL_ID)
+					if log_channel:
+						await log_channel.send(embed=embed)
+
 					await interaction_modal.response.send_message(
-						"✅ Логи отправлены.",
+						"✅ Информация отправлена, кнопка закрыта.",
 						ephemeral=True
 					)
 
-				except:
+				except discord.Forbidden:
 					await interaction_modal.response.send_message(
-						"⚠ Не удалось отправить ЛС.",
+						"⚠ Не удалось отправить ЛС пользователю.",
+						ephemeral=True
+					)
+				except Exception:
+					await interaction_modal.response.send_message(
+						"⚠ Произошла ошибка при отправке логов.",
 						ephemeral=True
 					)
 
